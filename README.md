@@ -1,6 +1,6 @@
 # Data Engineering & Applied AI/ML Commerce Platform
 
-> **Interactive Living Documentation:** Explore the full interactive architectural blueprints, streaming topology, Medallion lakehouse specs, and ML models in [`docs/index.html`](docs/index.html) (hosted via GitHub Pages).
+> **Interactive Living Documentation:** Explore the full interactive architectural blueprints, streaming topology, Medallion lakehouse specs, and ML models in [`docs/index.html`](https://kinshuksaxena.github.io/commerce-data-ai-portfolio/) (hosted via GitHub Pages).
 
 This repository showcases a production-grade, end-to-end **Data Engineering, Real-Time Streaming, Medallion Lakehouse, and Applied Machine Learning** platform built for modern autonomous commerce. It captures practical enterprise patterns across event-driven streaming, strict relational schema isolation, closed-loop Reverse-ETL, and embedded predictive ML.
 
