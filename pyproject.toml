@@ -1,0 +1,8 @@
+[project]
+name = "data-ai-portfolio"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv.extra-build-dependencies]
+apache-beam = ["setuptools"]

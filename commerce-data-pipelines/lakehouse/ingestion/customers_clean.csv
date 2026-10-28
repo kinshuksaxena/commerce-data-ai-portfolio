@@ -1,0 +1,11 @@
+customer_id,name,email,phone,address,latitude,longitude,loyalty_tier,region
+CUST-001,Alice Johnson,alice@example.com,+1-415-555-0101,"1 Ferry Building, The Embarcadero, San Francisco, CA 94111",37.795500,-122.393700,PLATINUM,WEST
+CUST-002,Bob Smith,bob@example.com,+1-415-555-0102,"333 Post St, Union Square, San Francisco, CA 94108",37.788100,-122.407500,GOLD,WEST
+CUST-003,Carol Williams,carol@example.com,+1-415-555-0103,"1 Dr Carlton B Goodlett Pl, Civic Center, San Francisco, CA 94102",37.779300,-122.419200,PLATINUM,WEST
+CUST-004,David Brown,david@example.com,+1-415-555-0104,"1000 Chestnut St, Russian Hill, San Francisco, CA 94109",37.802100,-122.419900,SILVER,WEST
+CUST-005,Eva Martinez,eva@example.com,+1-415-555-0105,"501 Dolores St, Mission District, San Francisco, CA 94110",37.760000,-122.427400,GOLD,WEST
+CUST-006,Frank Miller,frank@example.com,+1-415-555-0106,"24 Willie Mays Plaza, Oracle Park, San Francisco, CA 94107",37.778600,-122.389300,BRONZE,WEST
+CUST-007,Grace Hopper,grace@example.com,+1-415-555-0107,"2001 Fillmore St, Pacific Heights, San Francisco, CA 94115",37.789200,-122.433900,PLATINUM,WEST
+CUST-008,Henry Chen,henry@example.com,+1-415-555-0108,"600 Montgomery St, Transamerica Pyramid, San Francisco, CA 94111",37.795200,-122.402800,GOLD,WEST
+CUST-009,Isabella Rossi,isabella@example.com,+1-415-555-0109,"500 Parnassus Ave, Inner Sunset, San Francisco, CA 94143",37.763100,-122.457800,SILVER,WEST
+CUST-010,James Wilson,james@example.com,+1-415-555-0110,"1000 Great Hwy, Ocean Beach, San Francisco, CA 94121",37.774500,-122.511000,BRONZE,WEST

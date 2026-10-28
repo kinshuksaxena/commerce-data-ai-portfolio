@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engineering Marvel: Inside an Autonomous, AI-First Commerce Engine</title>
+  <meta name="description" content="A comprehensive living documentation of an end-to-end data and AI engineering marvel: real-time Apache Beam streaming, Bigtable telematics, Medallion Lakehouse ELT, ML forecasting, and glass-box observability.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #060913;
+      --bg-surface: #0d1322;
+      --bg-surface-elevated: #151d32;
+      --bg-glass: rgba(13, 19, 34, 0.75);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(56, 189, 248, 0.3);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #fb7185;
+      --accent-purple: #c084fc;
+      --sidebar-width: 290px;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      color-scheme: dark;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      line-height: 1.65;
+      font-size: 16px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background lighting */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -150px;
+      left: 20%;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -150px;
+      right: 10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(192, 132, 252, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* App Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: var(--sidebar-width);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid var(--border-subtle);
+      padding: 2rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #060913;
+      font-size: 1.1rem;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .brand-text span {
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .nav-group {
+      margin-bottom: 1.75rem;
+    }
+
+    .nav-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.6rem;
+      padding-left: 0.75rem;
+    }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0.65rem 0.85rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      min-height: 48px;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+      transform: translateX(3px);
+    }
+
+    .nav-link.active {
+      color: var(--accent);
+      background: var(--accent-glow);
+      border-left: 3px solid var(--accent);
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.8rem;
+      color: var(--text-faint);
+    }
+
+    .sidebar-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-weight: 500;
+      transition: color 0.2s;
+      min-height: 48px;
+    }
+
+    .sidebar-footer a:hover {
+      color: var(--accent);
+    }
+
+    /* Main Content Area */
+    .content-area {
+      flex: 1;
+      max-width: 1280px;
+      width: 100%;
+      min-width: 0;
+      padding: 2.5rem 2.75rem 6rem;
+      margin: 0 auto;
+    }
+
+    /* Mobile Menu Toggle */
+    .mobile-header {
+      display: none;
+      position: sticky;
+      top: 0;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 1.5rem;
+      z-index: 101;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-toggle {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 8px 12px;
+      font-size: 1rem;
+      cursor: pointer;
+      min-height: 48px;
+      min-width: 48px;
+    }
+
+    /* Hero Section */
+    .hero {
+      margin-bottom: 4rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 14px;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      margin-bottom: 1.5rem;
+    }
+
+    .badge-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .hero h1 {
+      font-size: 2.75rem;
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 2rem;
+      max-width: 860px;
+    }
+
+    .hero-personal-note {
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      font-style: italic;
+      margin-bottom: 2rem;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-top: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-highlight);
+    }
+
+    .metric-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .metric-card:nth-child(1) .metric-value { color: var(--accent); }
+    .metric-card:nth-child(2) .metric-value { color: var(--accent-emerald); }
+    .metric-card:nth-child(3) .metric-value { color: var(--accent-amber); }
+    .metric-card:nth-child(4) .metric-value { color: var(--accent-purple); }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+
+    /* Section Styling */
+    section {
+      margin-bottom: 4.5rem;
+      scroll-margin-top: 3rem;
+    }
+
+    .section-header {
+      margin-bottom: 1.75rem;
+    }
+
+    .section-chapter {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Cards & Containers */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-highlight {
+      border-color: var(--border-highlight);
+      background: linear-gradient(180deg, var(--bg-surface-elevated) 0%, var(--bg-surface) 100%);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Callout & Alerts */
+    .callout {
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-sm);
+      margin: 1.5rem 0;
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.05);
+      font-size: 0.95rem;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Interactive HTML/CSS/SVG Architecture Blueprints */
+    .blueprint-shell {
+      background: linear-gradient(165deg, rgba(21, 29, 50, 0.92) 0%, rgba(13, 19, 34, 0.98) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.24);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin: 1.75rem 0;
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      position: relative;
+      overflow: visible;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .blueprint-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-bottom: 1rem;
+      margin-bottom: 1.35rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .blueprint-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .blueprint-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .blueprint-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+    }
+
+    .blueprint-legend {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    /* Blueprint 1: 4-Stage Master Architecture Grid (2x2 Quadrant Default, 4-Col on Wide Viewports) */
+    .bp-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.1rem;
+      position: relative;
+      align-items: stretch;
+      width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 1540px) {
+      .bp-grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    .bp-col {
+      background: rgba(6, 9, 19, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      position: relative;
+      min-width: 0;
+    }
+
+    .bp-col-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      min-width: 0;
+    }
+
+    .bp-col-1 { border-top: 3px solid var(--accent); }
+    .bp-col-1 .bp-col-header { color: var(--accent); }
+
+    .bp-col-2 { border-top: 3px solid var(--accent-emerald); }
+    .bp-col-2 .bp-col-header { color: var(--accent-emerald); }
+
+    .bp-col-3 { border-top: 3px solid var(--accent-amber); }
+    .bp-col-3 .bp-col-header { color: var(--accent-amber); }
+
+    .bp-col-4 { border-top: 3px solid var(--accent-purple); }
+    .bp-col-4 .bp-col-header { color: var(--accent-purple); }
+
+    .bp-node {
+      background: var(--bg-surface-elevated);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      min-height: 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .bp-node:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-highlight);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .bp-node-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .bp-node-name {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #ffffff;
+      min-width: 0;
+    }
+
+    .bp-node-desc {
+      font-size: 0.77rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+
+    .bp-tag {
+      display: inline-flex;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      white-space: normal;
+      word-break: break-word;
+      line-height: 1.3;
+      max-width: 100%;
+    }
+
+    .bp-tag.emerald {
+      background: rgba(52, 211, 153, 0.14);
+      color: var(--accent-emerald);
+      border-color: rgba(52, 211, 153, 0.35);
+    }
+
+    .bp-tag.amber {
+      background: rgba(251, 191, 36, 0.14);
+      color: var(--accent-amber);
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+
+    .bp-tag.rose {
+      background: rgba(251, 113, 133, 0.14);
+      color: var(--accent-rose);
+      border-color: rgba(251, 113, 133, 0.35);
+    }
+
+    .bp-tag.purple {
+      background: rgba(192, 132, 252, 0.14);
+      color: var(--accent-purple);
+      border-color: rgba(192, 132, 252, 0.35);
+    }
+
+    .bp-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+      min-width: 0;
+    }
+
+    .bp-flow-ribbon {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding-top: 0.9rem;
+      border-top: 1px dashed rgba(255, 255, 255, 0.12);
+      min-width: 0;
+    }
+
+    .bp-connector-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.06);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      min-height: 48px;
+      min-width: 0;
+      text-align: center;
+    }
+
+    /* Blueprint 2 & 3: Horizontal & Branched Pipeline Diagrams */
+    .bp-pipeline-track {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.15fr);
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+      min-width: 0;
+    }
+
+    .bp-arrow-svg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      gap: 2px;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+
+    .bp-branches-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+      gap: 1rem;
+      margin-top: 0.75rem;
+      min-width: 0;
+    }
+
+    .bp-branch-box {
+      background: rgba(6, 9, 19, 0.72);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    .bp-branch-box.valid-branch {
+      border-left: 4px solid var(--accent-emerald);
+    }
+
+    .bp-branch-box.dlq-branch {
+      border-left: 4px solid var(--accent-rose);
+      background: rgba(251, 113, 133, 0.03);
+    }
+
+    .bp-branch-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      min-width: 0;
+    }
+
+    /* Blueprint 3: 3-Step ACID & Cache Inside Beam */
+    .bp-acid-stages {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.9rem;
+      margin-top: 1rem;
+      min-width: 0;
+    }
+
+    .bp-acid-card {
+      background: rgba(6, 9, 19, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      min-width: 0;
+    }
+
+    /* Blueprint 4: 5-Stage Medallion + Reverse-ETL Loop (Spacious 2-Row Flow Grid) */
+    .bp-medallion-stages {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0.95rem;
+      align-items: stretch;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .bp-medallion-card {
+      background: rgba(6, 9, 19, 0.72);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      min-width: 0;
+      grid-column: span 2;
+    }
+
+    /* Row 2 of Medallion Lakehouse: Stage 4 (Gold Marts) & Stage 5 (Reverse-ETL) span 3 cols each (50% width) */
+    .bp-medallion-card:nth-child(4),
+    .bp-medallion-card:nth-child(5) {
+      grid-column: span 3;
+    }
+
+    .bp-loopback-banner {
+      margin-top: 1rem;
+      background: linear-gradient(90deg, rgba(192, 132, 252, 0.12) 0%, rgba(56, 189, 248, 0.12) 50%, rgba(52, 211, 153, 0.12) 100%);
+      border: 1px solid rgba(192, 132, 252, 0.35);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.82rem;
+      color: #f1f5f9;
+      min-height: 48px;
+      min-width: 0;
+    }
+
+    /* Blueprint 5A: ML Pipeline Grid */
+    .bp-ml-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.45fr);
+      gap: 1rem;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .bp-ml-models {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+
+    /* Blueprint 5B: Visual Distributed Trace Waterfall */
+    .trace-waterfall {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-top: 1rem;
+      min-width: 0;
+    }
+
+    .trace-row {
+      display: grid;
+      grid-template-columns: minmax(0, 270px) minmax(0, 1fr) 90px;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.65rem 0.85rem;
+      background: rgba(6, 9, 19, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      min-height: 48px;
+      font-size: 0.82rem;
+      min-width: 0;
+    }
+
+    .trace-span-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .trace-bar-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .trace-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      position: absolute;
+      top: 0;
+    }
+
+    .trace-duration {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: right;
+      color: #f8fafc;
+    }
+
+    /* Code Blocks & Tabs */
+    .code-container {
+      background: #040711;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin: 1.5rem 0;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0a0f1d;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.8rem;
+      color: var(--text-faint);
+    }
+
+    .code-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88em;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    /* Flow Step Pills & Grid */
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+
+    .flow-step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .step-number {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.4rem;
+    }
+
+    .step-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Comparison & Spec Tables */
+    .spec-table-container {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+      background: var(--bg-surface);
+    }
+
+    th {
+      background: var(--bg-surface-elevated);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 3rem;
+      margin-top: 5rem;
+      text-align: center;
+      color: var(--text-faint);
+      font-size: 0.88rem;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    footer a:hover {
+      color: var(--accent);
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1024px) {
+      .app-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        display: none;
+        position: fixed;
+        top: 68px;
+        left: 0;
+        width: 100%;
+        height: calc(100vh - 68px);
+        background: var(--bg-base);
+      }
+      .sidebar.open {
+        display: flex;
+      }
+      .mobile-header {
+        display: flex;
+      }
+      .content-area {
+        padding: 2rem 1.25rem;
+      }
+      .hero h1 {
+        font-size: 2.2rem;
+      }
+      .bp-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .bp-medallion-stages {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .bp-medallion-card,
+      .bp-medallion-card:nth-child(4),
+      .bp-medallion-card:nth-child(5) {
+        grid-column: span 1;
+      }
+      .bp-pipeline-track {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .bp-arrow-svg {
+        transform: rotate(90deg);
+        margin: 0.35rem 0;
+      }
+      .bp-branches-grid,
+      .bp-acid-stages,
+      .bp-ml-layout,
+      .bp-flow-ribbon {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .trace-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+      }
+      .trace-duration {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .bp-grid-4,
+      .bp-medallion-stages {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Header Navigation -->
+  <header class="mobile-header">
+    <div class="brand">
+      <div class="brand-icon">DE</div>
+      <div class="brand-text">
+        <h1>Autonomous Commerce</h1>
+        <span>Engineering Docs</span>
+      </div>
+    </div>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button>
+  </header>
+
+  <div class="app-container">
+    <!-- Sticky Navigation Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <a href="#overview" class="brand">
+        <div class="brand-icon">DE</div>
+        <div class="brand-text">
+          <h1>Autonomous Commerce</h1>
+          <span>Living Documentation</span>
+        </div>
+      </a>
+
+      <div class="nav-group">
+        <div class="nav-label">Foundations</div>
+        <ul class="nav-links">
+          <li><a href="#overview" class="nav-link active">1. The Spark & Vision</a></li>
+          <li><a href="#architecture" class="nav-link">2. Master Architecture</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Streaming Arteries</div>
+        <ul class="nav-links">
+          <li><a href="#delivery-tracker" class="nav-link">3. Fleet Streaming & Beam</a></li>
+          <li><a href="#inventory-stream" class="nav-link">4. Inventory Mesh & Locks</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Analytical Engine</div>
+        <ul class="nav-links">
+          <li><a href="#lakehouse-medallion" class="nav-link">5. Medallion Lakehouse</a></li>
+          <li><a href="#reverse-etl" class="nav-link">6. Reverse-ETL & Airflow</a></li>
+          <li><a href="#ml-intelligence" class="nav-link">7. Predictive ML Models</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Reliability</div>
+        <ul class="nav-links">
+          <li><a href="#observability" class="nav-link">8. Glass-Box Observability</a></li>
+          <li><a href="#specs" class="nav-link">9. Production Runbook</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <div>Crafted as an end-to-end living portfolio.</div>
+        <a href="https://github.com/kinshuksaxena/data-ai-portfolio" target="_blank" rel="noopener">
+          <span>GitHub Repository</span> ↗
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+
+      <!-- Section 1: Hero & Vision -->
+      <section class="hero" id="overview">
+        <div class="section-chapter">Chapter 01</div>
+        <div class="badge-pill">
+          <span class="badge-pulse"></span>
+          <span>End-to-End Enterprise Data Architecture</span>
+        </div>
+        <h1>Inside an Autonomous, AI-First Commerce Engine</h1>
+        <p class="hero-lead">
+          A living, production-grade showcase bridging streaming data engineering, high-throughput cloud emulators, a medallion lakehouse, and conversational AI agents. Built to demonstrate how modern enterprises break free from monolithic database locks and build resilient, real-time autonomous systems.
+        </p>
+
+        <div class="hero-personal-note">
+          "This project is an attempt to capture the essence of transformational work architecting data platforms that shift business models from traditional e-commerce to AI-first autonomous operations—runnable locally with zero cloud vendor lock-in."
+        </div>
+
+        <div class="hero-metrics">
+          <div class="metric-card">
+            <span class="metric-value">&lt; 10s</span>
+            <span class="metric-label">Beam Window Latency</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">550m</span>
+            <span class="metric-label">Telematics Geofence</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">Dual-Sink</span>
+            <span class="metric-label">Bigtable + PostgreSQL</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">Medallion</span>
+            <span class="metric-label">Bronze &rarr; Silver &rarr; Gold</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Architecture Overview -->
+      <section id="architecture">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 02</div>
+          <h2 class="section-title">Decoupled Micro-Architecture</h2>
+          <p class="section-subtitle">
+            Traditional commerce stacks bind checkout, inventory deduction, telemetry, and reporting into a single monolithic transactional database. Under peak flash-sale loads, this causes catastrophic lock contention. Here is how we decoupled the platform using asynchronous event-driven boundaries.
+          </p>
+        </div>
+
+        <!-- Blueprint 1: 4-Column End-to-End Platform Architecture Grid -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 1: 4-Column End-to-End Platform Architecture Grid">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 01</span>
+              <span class="blueprint-title">End-to-End Event-Driven Commerce &amp; Lakehouse Mesh</span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>Ingestion</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Stream/Batch Compute</span>
+              <span><span class="legend-dot" style="background: var(--accent-amber);"></span>Multi-Model Storage</span>
+              <span><span class="legend-dot" style="background: var(--accent-purple);"></span>Serving &amp; Portal</span>
+            </div>
+          </div>
+
+          <div class="bp-grid-4">
+            <!-- Column 1: Event Producers & Ingestion -->
+            <div class="bp-col bp-col-1">
+              <div class="bp-col-header">
+                <span>1. Event Producers &amp; Ingestion</span>
+                <span>01</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">GPS Route Simulator</span>
+                  <span class="bp-tag">POST /publish</span>
+                </div>
+                <div class="bp-node-desc">Continuous vehicle telemetry generator emitting 1Hz coordinate pings &amp; route breadcrumbs.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Warehouse Stock Publisher</span>
+                  <span class="bp-tag emerald">RESTOCK / CYCLE_COUNT</span>
+                </div>
+                <div class="bp-node-desc">Dynamic SKU auto-discovery &amp; automated safety-stock replenishment publisher.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">CSV Dimension Uploader</span>
+                  <span class="bp-tag amber">customers / products</span>
+                </div>
+                <div class="bp-node-desc">Multipart ingestion gateway staging raw dimensional snapshots to GCS Bronze.</div>
+              </div>
+            </div>
+
+            <!-- Column 2: Stream & Batch Compute -->
+            <div class="bp-col bp-col-2">
+              <div class="bp-col-header">
+                <span>2. Stream &amp; Batch Compute</span>
+                <span>02</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Cloud Pub/Sub Bus</span>
+                  <span class="bp-tag emerald">Message Backbone</span>
+                </div>
+                <div class="bp-node-desc">Decoupled event topics buffering high-velocity telemetry &amp; stock deltas.</div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag">stream-topic</span>
+                  <span class="bp-tag emerald">inventory-updates</span>
+                </div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Apache Beam Workers</span>
+                  <span class="bp-tag">DirectRunner</span>
+                </div>
+                <div class="bp-node-desc">Stateful stream processors executing <code>10s</code> Fixed Windows, spatial geofencing &amp; ACID locks.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Apache Airflow (:8080)</span>
+                  <span class="bp-tag amber">LocalExecutor DAGs</span>
+                </div>
+                <div class="bp-node-desc">Deterministic batch ELT &amp; Reverse-ETL orchestration with timeout boundaries.</div>
+              </div>
+            </div>
+
+            <!-- Column 3: Isolated Multi-Model Storage -->
+            <div class="bp-col bp-col-3">
+              <div class="bp-col-header">
+                <span>3. Multi-Model Storage</span>
+                <span>03</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Cloud Bigtable</span>
+                  <span class="bp-tag">vehicle_locations</span>
+                </div>
+                <div class="bp-node-desc">Wide-column NoSQL store indexing high-velocity time-series GPS breadcrumbs.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Redis 7 L1 Cache</span>
+                  <span class="bp-tag emerald">stock:{sku}</span>
+                </div>
+                <div class="bp-node-desc">Sub-millisecond read-aside cache absorbing catalog browse spikes.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">PostgreSQL Isolation</span>
+                  <span class="bp-tag amber">Schema-Isolated OLTP</span>
+                </div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag">catalog</span>
+                  <span class="bp-tag">orders</span>
+                  <span class="bp-tag">delivery</span>
+                  <span class="bp-tag">customers</span>
+                  <span class="bp-tag">inventory</span>
+                </div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">GCS Bronze &amp; BigQuery</span>
+                  <span class="bp-tag purple">commerce_analytics</span>
+                </div>
+                <div class="bp-node-desc">Immutable GCS Bronze (<code>Avro</code> &amp; <code>CSV</code>) feeding BigQuery Silver &amp; Gold marts.</div>
+              </div>
+            </div>
+
+            <!-- Column 4: Serving & Experience Layer -->
+            <div class="bp-col bp-col-4">
+              <div class="bp-col-header">
+                <span>4. Serving &amp; Experience</span>
+                <span>04</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Commerce Gateway</span>
+                  <span class="bp-tag">:8002 FastAPI</span>
+                </div>
+                <div class="bp-node-desc">Unified REST API serving catalog search, transactional checkout, ML risk &amp; traces.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Delivery Tracker API</span>
+                  <span class="bp-tag emerald">:8000 FastAPI</span>
+                </div>
+                <div class="bp-node-desc">Low-latency telematics ingestion &amp; live fleet coordinate streaming service.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Commerce Portal UI</span>
+                  <span class="bp-tag amber">:3000 SPA</span>
+                </div>
+                <div class="bp-node-desc">Centralized operator &amp; shopper portal with live maps, streams &amp; lakehouse controls.</div>
+              </div>
+              <div class="bp-node" style="border-style: dashed; border-color: rgba(192, 132, 252, 0.4);">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Agentic AI Service (:8003)</span>
+                  <span class="bp-tag purple">Phase 2 Roadmap</span>
+                </div>
+                <div class="bp-node-desc">Conversational multi-agent copilot for autonomous supply chain &amp; order resolution.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Directional SVG Flow Connectors Ribbon -->
+          <div class="bp-flow-ribbon" aria-label="Cross-column data flow pathways">
+            <div class="bp-connector-pill">
+              <span>Stage 01 &rarr; Stage 02: HTTP &amp; Pub/Sub Event Ingestion</span>
+              <svg width="24" height="12" viewBox="0 0 24 12" fill="none" aria-hidden="true">
+                <path d="M0 6H22M22 6L17 1M22 6L17 11" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="bp-connector-pill">
+              <span>Stage 02 &rarr; Stage 03: Dual-Sink Stream &amp; Medallion ELT</span>
+              <svg width="24" height="12" viewBox="0 0 24 12" fill="none" aria-hidden="true">
+                <path d="M0 6H22M22 6L17 1M22 6L17 11" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="bp-connector-pill">
+              <span>Stage 03 &harr; Stage 04: Sub-ms Cache Reads &amp; Reverse-ETL</span>
+              <svg width="24" height="12" viewBox="0 0 24 12" fill="none" aria-hidden="true">
+                <path d="M2 6H22M22 6L17 1M22 6L17 11" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 0.75rem; font-size: 1.15rem; color: #fff;">Architectural Tenets</h3>
+          <ul style="padding-left: 1.25rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Strict Database Isolation:</strong> The transactional PostgreSQL engine enforces domain isolation across schemas: <code>catalog</code>, <code>orders</code>, <code>delivery</code>, <code>customers</code>, and <code>inventory</code>. Monolithic joins across unrelated domains are forbidden.</li>
+            <li><strong>Asynchronous Pub/Sub Mesh:</strong> High-velocity events (driver GPS breadcrumbs, inventory adjustments, status webhooks) stream through Google Cloud Pub/Sub topics.</li>
+            <li><strong>Hot vs. Cold Separation:</strong> High-frequency GPS coordinates flow directly to Google Cloud Bigtable for ultra-fast time-series analytics, while stateful transitions land in PostgreSQL for driver logistics.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Section 3: Delivery Tracker & Beam -->
+      <section id="delivery-tracker">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 03</div>
+          <h2 class="section-title">Fleet Telematics &amp; Real-Time Beam Streaming</h2>
+          <p class="section-subtitle">
+            Solving the last-mile delivery tracking problem with low-latency stream processing, sliding/tumbling windows, and automated geofence package drop simulation.
+          </p>
+        </div>
+
+        <!-- Blueprint 2: Fleet Telematics & Apache Beam Pipeline Diagram -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 2: Fleet Telematics and Apache Beam Dual-Sink Pipeline">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 02</span>
+              <span class="blueprint-title">Fleet Telematics Stream, Spatial Geofencing &amp; Dual-Sink Topology</span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>10s Tumbling Window</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Valid Dual-Sink</span>
+              <span><span class="legend-dot" style="background: var(--accent-rose);"></span>DLQ Quarantine</span>
+            </div>
+          </div>
+
+          <!-- Top Ingestion & Beam Transform Track -->
+          <div class="bp-pipeline-track">
+            <div class="bp-node">
+              <div class="bp-node-top">
+                <span class="bp-node-name">GPS Telemetry Simulator</span>
+                <span class="bp-tag">:8000</span>
+              </div>
+              <div class="bp-node-desc">Emits live vehicle coordinates via <code>POST /publish</code> with <code>30s</code> package drop dwell simulation.</div>
+            </div>
+
+            <div class="bp-arrow-svg" aria-hidden="true">
+              <span>HTTP POST</span>
+              <svg width="36" height="14" viewBox="0 0 36 14" fill="none">
+                <path d="M0 7H34M34 7L28 2M34 7L28 12" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <div class="bp-node">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Cloud Pub/Sub</span>
+                <span class="bp-tag emerald">stream-topic</span>
+              </div>
+              <div class="bp-node-desc">Durable message ingestion topic decoupling fleet transmitters from downstream compute.</div>
+            </div>
+
+            <div class="bp-arrow-svg" aria-hidden="true">
+              <span>Pull Sub</span>
+              <svg width="36" height="14" viewBox="0 0 36 14" fill="none">
+                <path d="M0 7H34M34 7L28 2M34 7L28 12" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <div class="bp-node" style="border-color: rgba(56, 189, 248, 0.45);">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Apache Beam Worker</span>
+                <span class="bp-tag">10s FixedWindow</span>
+              </div>
+              <div class="bp-node-desc">Validates payload schema, evaluates <code>&plusmn;0.005&deg; / 550m</code> spatial geofence &amp; routes side-outputs.</div>
+            </div>
+          </div>
+
+          <!-- Dual Output Branches from Apache Beam -->
+          <div class="bp-branches-grid">
+            <!-- Branch A: Valid Stream -->
+            <div class="bp-branch-box valid-branch">
+              <div class="bp-branch-title" style="color: var(--accent-emerald);">
+                <span>Branch A &bull; Validated Telematics Dual-Sink</span>
+                <span class="bp-tag emerald">Main TupleTag</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Sink 1: Google Cloud Bigtable</span>
+                  <span class="bp-tag">vehicle_locations</span>
+                </div>
+                <div class="bp-node-desc">Sub-millisecond wide-column time-series writes indexed by vehicle &amp; reverse timestamp.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Sink 2: PostgreSQL &amp; Webhook Fanout</span>
+                  <span class="bp-tag amber">delivery_notification</span>
+                </div>
+                <div class="bp-node-desc">Updates <code>delivery.route_stops</code> &amp; <code>orders.order_status_history</code> &rarr; publishes to Pub/Sub <code>delivery_notification</code> &rarr; triggers <strong>Webhook Notification Worker</strong>.</div>
+              </div>
+            </div>
+
+            <!-- Branch B: Quarantine Side-Output -->
+            <div class="bp-branch-box dlq-branch">
+              <div class="bp-branch-title" style="color: var(--accent-rose);">
+                <span>Branch B &bull; Quarantine Side-Output</span>
+                <span class="bp-tag rose">DLQ TupleTag</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Corrupt / Malformed JSON Filter</span>
+                  <span class="bp-tag rose">Schema Trap</span>
+                </div>
+                <div class="bp-node-desc">Intercepts missing coordinates, out-of-bounds lat/lon, or unparseable payloads without halting the Beam runner.</div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Dead-Letter Queue Sink</span>
+                  <span class="bp-tag rose">delivery.dead_letter_messages</span>
+                </div>
+                <div class="bp-node-desc">Persists raw offending payload, stack trace &amp; ingestion timestamp in PostgreSQL for operator replay.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-steps">
+          <div class="flow-step-card">
+            <div class="step-number">Step 01 &bull; 10s Windowing</div>
+            <div class="step-title">Fixed Window Aggregation</div>
+            <div class="step-desc">
+              GPS coordinates arrive every second. Apache Beam groups pings into deterministic 10-second tumbling windows per route to eliminate telemetry jitter and smooth out speed anomalies.
+            </div>
+          </div>
+          <div class="flow-step-card">
+            <div class="step-number">Step 02 &bull; 550m Geofencing</div>
+            <div class="step-title">Spatial Proximity Check</div>
+            <div class="step-desc">
+              When a vehicle moves within &plusmn;0.005&deg; (&approx;550m) of an assigned customer stop, the streaming worker flags an imminent arrival and triggers the webhook delivery worker.
+            </div>
+          </div>
+          <div class="flow-step-card">
+            <div class="step-number">Step 03 &bull; 30s Package Drop</div>
+            <div class="step-title">Stop Dwell Simulation</div>
+            <div class="step-desc">
+              To mirror physical human drop-offs, the telemetry engine pauses the vehicle at each delivery coordinate for a 30-second dwell period before continuing the route loop.
+            </div>
+          </div>
+        </div>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-title">telematics_pipeline.py &bull; Dual-Sink Apache Beam Logic</span>
+            <span>Python 3.11</span>
+          </div>
+          <pre><code># Stream GPS breadcrumbs from Pub/Sub into Cloud Bigtable & PostgreSQL
+with beam.Pipeline(options=pipeline_options) as p:
+    raw_pings = (
+        p
+        | "ReadFromPubSub" >> beam.io.ReadFromPubSub(subscription=sub_name)
+        | "ParseJSON" >> beam.Map(json.loads)
+        | "WindowInto10s" >> beam.WindowInto(window.FixedWindows(10))
+    )
+
+    # Sink 1: Low-latency time-series write to Bigtable
+    raw_pings | "WriteToBigtable" >> beam.ParDo(BigtableWriteDoFn(table_id="vehicle_locations"))
+
+    # Sink 2: Geofence detection & Delivery status update in PostgreSQL
+    (
+        raw_pings
+        | "DetectStopArrival" >> beam.ParDo(StopGeofenceEvaluationDoFn(threshold_deg=0.005))
+        | "UpdateDeliveryStatus" >> beam.ParDo(PostgresDeliveryUpdateDoFn())
+    )</code></pre>
+        </div>
+      </section>
+
+      <!-- Section 4: Inventory Streaming & Concurrency -->
+      <section id="inventory-stream">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 04</div>
+          <h2 class="section-title">High-Throughput Inventory Mesh &amp; Pessimistic Locks</h2>
+          <p class="section-subtitle">
+            How to avoid overselling during intense checkout spikes without degrading read latency for millions of browsing shoppers.
+          </p>
+        </div>
+
+        <!-- Blueprint 3: High-Throughput Inventory Mesh & Concurrency Locks Diagram -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 3: High-Throughput Inventory Mesh and Concurrency Locks">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 03</span>
+              <span class="blueprint-title">Autonomous Warehouse Publisher &amp; 3-Stage ACID Concurrency Pipeline</span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>Auto-Discovery</span>
+              <span><span class="legend-dot" style="background: var(--accent-amber);"></span>Row Lock ACID</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Redis L1 Sync</span>
+            </div>
+          </div>
+
+          <!-- Top Ingestion Track -->
+          <div class="bp-pipeline-track">
+            <div class="bp-node">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Warehouse Simulator</span>
+                <span class="bp-tag">Auto-Discovery</span>
+              </div>
+              <div class="bp-node-desc">Polls <code>catalog.product_catalog</code> for live SKUs &amp; fires emergency <code>RESTOCK</code> events when safety-stock thresholds breach.</div>
+            </div>
+
+            <div class="bp-arrow-svg" aria-hidden="true">
+              <span>Publish Delta</span>
+              <svg width="36" height="14" viewBox="0 0 36 14" fill="none">
+                <path d="M0 7H34M34 7L28 2M34 7L28 12" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <div class="bp-node">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Cloud Pub/Sub Topic</span>
+                <span class="bp-tag emerald">inventory-updates</span>
+              </div>
+              <div class="bp-node-desc">High-throughput topic ordering stock adjustments, restocks, and warehouse cycle counts.</div>
+            </div>
+
+            <div class="bp-arrow-svg" aria-hidden="true">
+              <span>Beam Pull</span>
+              <svg width="36" height="14" viewBox="0 0 36 14" fill="none">
+                <path d="M0 7H34M34 7L28 2M34 7L28 12" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <div class="bp-node" style="border-color: rgba(251, 191, 36, 0.45);">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Apache Beam Subscriber</span>
+                <span class="bp-tag amber">inventory-beam-sub</span>
+              </div>
+              <div class="bp-node-desc">Executes deterministic 3-step transactional stock mutation &amp; L1 cache synchronization.</div>
+            </div>
+          </div>
+
+          <!-- 3-Step ACID & Cache Pipeline Inside Beam -->
+          <div class="bp-acid-stages">
+            <div class="bp-acid-card" style="border-top: 3px solid var(--accent);">
+              <div class="bp-node-top">
+                <span class="bp-node-name">1. Idempotency Guard</span>
+                <span class="bp-tag">Deduplication</span>
+              </div>
+              <div class="bp-node-desc">Verifies event UUID against <code>inventory.processed_inventory_events</code> before mutation to guarantee exactly-once processing across Beam retries.</div>
+            </div>
+
+            <div class="bp-acid-card" style="border-top: 3px solid var(--accent-amber);">
+              <div class="bp-node-top">
+                <span class="bp-node-name">2. Pessimistic Row Lock</span>
+                <span class="bp-tag amber">SELECT ... FOR UPDATE</span>
+              </div>
+              <div class="bp-node-desc">Acquires row-level lock on <code>inventory.inventory_levels</code>, prevents negative stock drift, and appends to immutable <code>inventory.inventory_audit_log</code>.</div>
+            </div>
+
+            <div class="bp-acid-card" style="border-top: 3px solid var(--accent-emerald);">
+              <div class="bp-node-top">
+                <span class="bp-node-name">3. Sub-ms L1 Cache Sync</span>
+                <span class="bp-tag emerald">Redis 7 + DLQ</span>
+              </div>
+              <div class="bp-node-desc">Atomically updates Redis 7 keys <code>stock:{product_id}</code> &amp; <code>stock_total:{product_id}</code>, routing any schema violations to the DLQ quarantine side-output.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-highlight">
+          <h3 style="margin-bottom: 0.5rem; color: #fff;">Multi-Level Concurrency Architecture</h3>
+          <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+            When orders surge, naive architectures face race conditions where two simultaneous transactions claim the final remaining unit. We designed a dual-tier protection layer:
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+            <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: 8px;">
+              <strong style="color: var(--accent);">Tier 1: Redis Fast Cache</strong>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Provides sub-millisecond stock availability checks for product catalog browse queries without hitting the database disk.</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: 8px;">
+              <strong style="color: var(--accent-amber);">Tier 2: Pessimistic Row Lock</strong>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"><code>SELECT ... FOR UPDATE</code> locks only the specific SKU during checkout, serializing deductions with zero risk of negative balances.</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: 8px;">
+              <strong style="color: var(--accent-rose);">Tier 3: Dead Letter Queue (DLQ)</strong>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Malformed stock adjustment messages automatically route to a dead-letter queue after 3 retries, preserving stream liveness.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Lakehouse Medallion & Reverse-ETL -->
+      <section id="lakehouse-medallion">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 05</div>
+          <h2 class="section-title">The Medallion Lakehouse &amp; Reverse-ETL</h2>
+          <p class="section-subtitle">
+            Transforming raw immutable transaction logs into enterprise analytics, then pushing high-value business signals back into operational production.
+          </p>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">The Medallion Philosophy in Practice</div>
+          <div>
+            Data flows from <strong>Bronze (Raw Avro/CSV staged in GCS)</strong> &rarr; <strong>Silver (Cleaned, typed, deduplicated BigQuery tables)</strong> &rarr; <strong>Gold (Curated dimensional marts &amp; product aggregations)</strong>. But we don't stop at dashboards: Gold metrics are pushed back to PostgreSQL via Airflow Reverse-ETL!
+          </div>
+        </div>
+
+        <!-- Blueprint 4: Closed-Loop Medallion Lakehouse & Reverse-ETL Blueprint -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 4: Closed-Loop Medallion Lakehouse and Reverse-ETL Architecture">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 04</span>
+              <span class="blueprint-title">5-Stage Medallion Lakehouse &amp; Operational Reverse-ETL Feedback Loop</span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>OLTP &amp; Raw</span>
+              <span><span class="legend-dot" style="background: var(--accent-amber);"></span>Bronze GCS</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Silver &amp; Gold BQ</span>
+              <span><span class="legend-dot" style="background: var(--accent-purple);"></span>Reverse-ETL</span>
+            </div>
+          </div>
+
+          <div class="bp-medallion-stages">
+            <!-- Stage 1 -->
+            <div class="bp-medallion-card" style="border-top: 3px solid var(--accent);">
+              <div class="bp-col-header" style="color: var(--accent);">
+                <span>Stage 1 &bull; Sources</span>
+                <span>OLTP</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">PostgreSQL Transactional</div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag">orders.orders</span>
+                  <span class="bp-tag">orders.order_items</span>
+                </div>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">Dimensional CSV Uploads</div>
+                <div class="bp-node-desc">Batch customer &amp; catalog master drops via portal API.</div>
+              </div>
+            </div>
+
+            <!-- Stage 2 -->
+            <div class="bp-medallion-card" style="border-top: 3px solid var(--accent-amber);">
+              <div class="bp-col-header" style="color: var(--accent-amber);">
+                <span>Stage 2 &bull; Bronze</span>
+                <span>GCS</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">Google Cloud Storage</div>
+                <div class="bp-node-desc">Immutable landing zone with PyIceberg table metadata.</div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag amber">orders/orders_latest.avro</span>
+                  <span class="bp-tag amber">customers/customers_latest.csv</span>
+                  <span class="bp-tag amber">products/products_latest.csv</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stage 3 -->
+            <div class="bp-medallion-card" style="border-top: 3px solid var(--accent-emerald);">
+              <div class="bp-col-header" style="color: var(--accent-emerald);">
+                <span>Stage 3 &bull; Silver</span>
+                <span>BigQuery</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">Cleaned &amp; Deduplicated</div>
+                <div class="bp-node-desc">Dataset: <code>commerce_analytics</code></div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag emerald">silver_orders</span>
+                  <span class="bp-tag emerald">silver_customers</span>
+                  <span class="bp-tag emerald">silver_products</span>
+                  <span class="bp-tag emerald">silver_delivery_route_stops</span>
+                  <span class="bp-tag emerald">silver_order_status_history</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stage 4 -->
+            <div class="bp-medallion-card" style="border-top: 3px solid var(--accent);">
+              <div class="bp-col-header" style="color: var(--accent);">
+                <span>Stage 4 &bull; Gold Marts</span>
+                <span>BigQuery</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">Executive &amp; ML Marts</div>
+                <div class="bp-node-desc">Curated star-schema aggregations for BI &amp; feature engineering.</div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag">gold_product_sales</span>
+                  <span class="bp-tag">fct_product_sales_mart</span>
+                  <span class="bp-tag">gold_route_performance_daily</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stage 5 -->
+            <div class="bp-medallion-card" style="border-top: 3px solid var(--accent-purple);">
+              <div class="bp-col-header" style="color: var(--accent-purple);">
+                <span>Stage 5 &bull; Reverse-ETL</span>
+                <span>Airflow</span>
+              </div>
+              <div class="bp-node">
+                <div class="bp-node-name">Operational Activation</div>
+                <div class="bp-node-desc">Syncs enriched sales velocity &amp; customer coordinates back to OLTP:</div>
+                <div class="bp-chip-row">
+                  <span class="bp-tag purple">catalog.product_catalog</span>
+                  <span class="bp-tag purple">customers.customers</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-loopback-banner">
+            <span><strong>Closed-Loop Reverse-ETL Feedback Cycle:</strong> Apache Airflow queries BigQuery Gold marts and upserts product demand velocity &amp; verified customer geolocation back into PostgreSQL <code>catalog.product_catalog</code> &amp; <code>customers.customers</code>.</span>
+            <span class="bp-tag purple">Stage 5 &rarr; Stage 1 Sync</span>
+          </div>
+        </div>
+
+        <div class="spec-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Medallion Layer</th>
+                <th>Storage Technology</th>
+                <th>Granularity &amp; Schema</th>
+                <th>Core Responsibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Bronze</strong></td>
+                <td>Google Cloud Storage (Avro/CSV)</td>
+                <td><code>orders/orders_latest.avro</code>, <code>customers_latest.csv</code>, <code>products_latest.csv</code></td>
+                <td>Immutable raw audit trail with PyIceberg metadata &amp; partition prefixes.</td>
+              </tr>
+              <tr>
+                <td><strong>Silver</strong></td>
+                <td>Google BigQuery (<code>commerce_analytics</code>)</td>
+                <td><code>silver_orders</code>, <code>silver_customers</code>, <code>silver_products</code>, <code>silver_delivery_route_stops</code></td>
+                <td>Data quality cleansing, line-item normalization, deduplication on primary keys.</td>
+              </tr>
+              <tr>
+                <td><strong>Gold</strong></td>
+                <td>Google BigQuery Data Mart</td>
+                <td><code>gold_product_sales</code> (<code>fct_product_sales_mart</code>), <code>gold_route_performance_daily</code></td>
+                <td>Star-schema analytics, revenue by category, driver delivery efficiency metrics.</td>
+              </tr>
+              <tr>
+                <td><strong>Reverse-ETL</strong></td>
+                <td>PostgreSQL (<code>catalog.product_catalog</code>, <code>customers.customers</code>)</td>
+                <td>Enriched operational product &amp; customer attributes</td>
+                <td>Syncs aggregated sales velocity &amp; customer coordinates back to live OLTP!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 6: Reverse-ETL & Airflow Orchestration -->
+      <section id="reverse-etl">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 06</div>
+          <h2 class="section-title">Automated Orchestration with Apache Airflow</h2>
+          <p class="section-subtitle">
+            Zero-downtime, deterministic DAG orchestration syncing transaction dumps, executing dbt transforms, and driving Reverse-ETL sync loops.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 0.75rem;">Production Airflow DAG Fleet</h3>
+          <ul style="padding-left: 1.25rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+            <li>
+              <strong><code>dag_periodic_orders_export</code>:</strong> Executes every 30 minutes. Dumps newly completed orders from PostgreSQL into Bronze Avro partitions in GCS with millisecond watermarks to prevent duplicate ingestion.
+            </li>
+            <li>
+              <strong><code>dag_dimension_ingestion</code>:</strong> Ingests slow-moving customer profiles and product catalog snapshots to maintain fresh dimensional lookups in the warehouse.
+            </li>
+            <li>
+              <strong><code>dag_reverse_etl_sync</code>:</strong> Queries BigQuery Gold data marts for product popularity indices and syncs them back to the operational database with transactional upserts.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Section 7: Machine Intelligence & Forecasting -->
+      <section id="ml-intelligence">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 07</div>
+          <h2 class="section-title">Embedded Machine Intelligence</h2>
+          <p class="section-subtitle">
+            Moving beyond retrospective reporting by deploying production ML models directly alongside data pipelines.
+          </p>
+        </div>
+
+        <!-- Blueprint 5A: Visual ML Pipeline Blueprint -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 5A: Embedded Machine Learning Feature Store and Inference Pipeline">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 05-A</span>
+              <span class="blueprint-title">Unified Feature Store &amp; Dual-Model Inference Architecture</span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>Feature Extractor</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Demand Regressor</span>
+              <span><span class="legend-dot" style="background: var(--accent-purple);"></span>Calibrated Classifier</span>
+            </div>
+          </div>
+
+          <div class="bp-ml-layout">
+            <!-- Feature Store Extractor -->
+            <div class="bp-node" style="border-left: 4px solid var(--accent); padding: 1.1rem;">
+              <div class="bp-node-top">
+                <span class="bp-node-name">Feature Store Extractor</span>
+                <span class="bp-tag">build_ml_features.py</span>
+              </div>
+              <div class="bp-node-desc" style="margin-top: 4px;">
+                Joins historical order velocity from BigQuery (<code>commerce_analytics</code>) with live route telematics &amp; stop dwell distributions to materialize training &amp; real-time inference vectors.
+              </div>
+              <div class="bp-chip-row" style="margin-top: 8px;">
+                <span class="bp-tag">BigQuery Marts</span>
+                <span class="bp-tag emerald">Live Telematics</span>
+                <span class="bp-tag amber">Inventory Runway</span>
+              </div>
+            </div>
+
+            <div class="bp-arrow-svg" aria-hidden="true">
+              <span>Feature Vectors</span>
+              <svg width="42" height="16" viewBox="0 0 42 16" fill="none">
+                <path d="M0 8H40M40 8L33 2M40 8L33 14" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <!-- Dual ML Models -->
+            <div class="bp-ml-models">
+              <div class="bp-node" style="border-left: 4px solid var(--accent-emerald);">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Model A: Demand Forecaster</span>
+                  <span class="bp-tag emerald">GradientBoostingRegressor</span>
+                </div>
+                <div class="bp-node-desc">
+                  Artifact: <code>commerce_demand_model.pkl</code> &rarr; Generates <strong>7 / 14 / 30-day</strong> SKU demand forecasts, computes Days of Inventory (DoI) runway &amp; triggers automated restock alerts.
+                </div>
+              </div>
+
+              <div class="bp-node" style="border-left: 4px solid var(--accent-purple);">
+                <div class="bp-node-top">
+                  <span class="bp-node-name">Model B: Calibrated Delivery Delay Classifier</span>
+                  <span class="bp-tag purple">0.9811 ROC-AUC</span>
+                </div>
+                <div class="bp-node-desc">
+                  Estimator: <code>CalibratedClassifierCV(GradientBoostingClassifier)</code> &rarr; Artifact: <code>delivery_delay_model.pkl</code> &rarr; Powers real-time Checkout &amp; Fleet Dashboard delay risk scoring.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-steps">
+          <div class="flow-step-card">
+            <div class="step-number">Model 01 &bull; Calibrated Classifier</div>
+            <div class="step-title">Delivery Delay Risk Pipeline</div>
+            <div class="step-desc">
+              Scores active shipments using <code>CalibratedClassifierCV(GradientBoostingClassifier)</code> (<code>0.9811 ROC-AUC</code>) across route distance, telematics speed, and stop dwell time to predict delays before they impact customers.
+            </div>
+          </div>
+          <div class="flow-step-card">
+            <div class="step-number">Model 02 &bull; Gradient Boosted Regressor</div>
+            <div class="step-title">Demand Forecasting &amp; Runway</div>
+            <div class="step-desc">
+              Calculates 7/14/30-day demand and Days of Inventory (DoI) runway via <code>commerce_demand_model.pkl</code>, proactively triggering automated warehouse restock alerts.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: Glass-Box Observability -->
+      <section id="observability">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 08</div>
+          <h2 class="section-title">Glass-Box Observability &amp; Distributed Tracing</h2>
+          <p class="section-subtitle">
+            When events traverse across HTTP APIs, Pub/Sub message buses, Apache Beam workers, and relational databases, finding latency bottlenecks requires unified end-to-end tracing.
+          </p>
+        </div>
+
+        <!-- Blueprint 5B: Visual Distributed Trace Waterfall Chart -->
+        <div class="blueprint-shell" role="region" aria-label="Blueprint 5B: Distributed Trace Waterfall Chart">
+          <div class="blueprint-header">
+            <div class="blueprint-title-group">
+              <span class="blueprint-badge">Blueprint 05-B</span>
+              <span class="blueprint-title">Distributed Trace Waterfall &bull; <code>trace_id: 8f4a-9b21</code></span>
+            </div>
+            <div class="blueprint-legend">
+              <span><span class="legend-dot" style="background: var(--accent);"></span>Sync HTTP/DB</span>
+              <span><span class="legend-dot" style="background: var(--accent-emerald);"></span>Async Pub/Sub &amp; Beam</span>
+              <span><span class="legend-dot" style="background: var(--accent-purple);"></span>BigQuery Log Sink</span>
+            </div>
+          </div>
+
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Every customer action propagates a deterministic <code>trace_id</code> and <code>span_id</code> across microservices, streaming windows, and analytical telemetry sinks:
+          </p>
+
+          <div class="trace-waterfall" role="list">
+            <!-- Span 1: API Gateway -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag">Root</span>
+                <span>API Gateway <code>POST /orders</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 0%; width: 28%; background: linear-gradient(90deg, #38bdf8, #818cf8);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent);">22 ms</div>
+            </div>
+
+            <!-- Span 2: PostgreSQL -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag amber">Span 101</span>
+                <span>PostgreSQL <code>INSERT orders</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 6%; width: 14%; background: var(--accent-amber);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent-amber);">8 ms</div>
+            </div>
+
+            <!-- Span 3: Cloud Pub/Sub -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag emerald">Span 102</span>
+                <span>Cloud Pub/Sub <code>publish</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 20%; width: 8%; background: var(--accent-emerald);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent-emerald);">4 ms</div>
+            </div>
+
+            <!-- Span 4: Apache Beam -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag">Span 201</span>
+                <span>Apache Beam <code>FixedWindows</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 28%; width: 52%; background: linear-gradient(90deg, #34d399, #38bdf8);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent);">10s window</div>
+            </div>
+
+            <!-- Span 5: Cloud Bigtable -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag emerald">Span 301</span>
+                <span>Cloud Bigtable <code>mutate_rows</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 80%; width: 6%; background: var(--accent-emerald);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent-emerald);">2 ms</div>
+            </div>
+
+            <!-- Span 6: BigQuery Observability Sink -->
+            <div class="trace-row" role="listitem">
+              <div class="trace-span-meta">
+                <span class="bp-tag purple">Telemetry</span>
+                <span>BigQuery <code>application_logs</code> &amp; <code>pipeline_metrics</code></span>
+              </div>
+              <div class="trace-bar-track" aria-hidden="true">
+                <div class="trace-bar-fill" style="left: 86%; width: 14%; background: var(--accent-purple);"></div>
+              </div>
+              <div class="trace-duration" style="color: var(--accent-purple);">Async Sink</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 9: Production Runbook & Specifications -->
+      <section id="specs">
+        <div class="section-header">
+          <div class="section-chapter">Chapter 09</div>
+          <h2 class="section-title">Running Locally with Unified Docker</h2>
+          <p class="section-subtitle">
+            The entire platform can be spun up on any development workstation using a single root configuration.
+          </p>
+        </div>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-title">Terminal Execution &bull; Zero Cloud Costs</span>
+            <span>bash</span>
+          </div>
+          <pre><code># 1. Clone repository
+git clone https://github.com/kinshuksaxena/data-ai-portfolio.git
+cd data-ai-portfolio
+
+# 2. Launch complete emulator ecosystem and microservices
+docker compose up -d
+
+# 3. Verify running service mesh
+# - Central Commerce App Portal:    http://localhost:3000
+# - Unified Commerce API Gateway:   http://localhost:8002/docs
+# - Apache Airflow Orchestrator:    http://localhost:8080 (airflow / airflow)
+# - Delivery Tracker Fast API:      http://localhost:8000/docs
+# - Agentic AI Service (:8003):     (Upcoming Phase 2 Roadmap)</code></pre>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer>
+        <p>&copy; 2026 Kinshuk Saxena &bull; Data &amp; AI Engineering Portfolio</p>
+        <p style="margin-top: 6px;">
+          Built with semantic HTML, Vanilla CSS tokens, and interactive SVG architecture blueprints for GitHub Pages deployment.
+        </p>
+      </footer>
+
+    </main>
+  </div>
+
+  <script>
+    // Mobile navigation toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (menuToggle && sidebar) {
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+    }
+
+    // Scroll spy for sticky navigation links
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 120;
+        if (pageYOffset >= sectionTop) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

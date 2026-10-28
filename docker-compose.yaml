@@ -1,0 +1,309 @@
+services:
+  # =========================================================================
+  # 1. GOOGLE CLOUD & MESSAGING EMULATORS
+  # =========================================================================
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: pubsub-emulator
+    restart: unless-stopped
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+    environment:
+      - PUBSUB_PROJECT_ID=test-project
+    healthcheck:
+      test: [ "CMD", "curl", "-s", "-f", "http://localhost:8085/" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  bigtable-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: bigtable-emulator
+    restart: unless-stopped
+    command: gcloud beta emulators bigtable start --host-port=0.0.0.0:8086
+    ports:
+      - "8086:8086"
+    environment:
+      - BIGTABLE_PROJECT_ID=test-project
+      - BIGTABLE_INSTANCE_ID=test-instance
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8086' || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: [ "redis-server", "--appendonly", "yes" ]
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+
+  # =========================================================================
+  # 2. DELIVERY TRACKER APPLICATION & STREAMING PIPELINE
+  # =========================================================================
+  delivery-tracker-api:
+    build:
+      context: ./commerce-data-pipelines/delivery-tracker/api
+      dockerfile: Dockerfile
+    container_name: delivery-tracker-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - PUBSUB_PROJECT_ID=test-project
+      - PUBSUB_TOPIC_ID=stream-topic
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+      - BIGTABLE_EMULATOR_HOST=bigtable-emulator:8086
+      - BIGTABLE_PROJECT_ID=test-project
+      - BIGTABLE_INSTANCE_ID=test-instance
+    volumes:
+      - ./commerce-data-pipelines/delivery-tracker/api:/app
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+      bigtable-emulator:
+        condition: service_healthy
+
+  delivery-beam-pipeline:
+    build:
+      context: ./commerce-data-pipelines/delivery-tracker/beam_pipeline
+      dockerfile: Dockerfile
+    container_name: delivery-beam-pipeline
+    restart: unless-stopped
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - BIGTABLE_EMULATOR_HOST=bigtable-emulator:8086
+      - GCP_PROJECT_ID=test-project
+      - PUBSUB_TOPIC=stream-topic
+      - BIGTABLE_INSTANCE_ID=test-instance
+      - BIGTABLE_TABLE_ID=vehicle_locations
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+    volumes:
+      - ./commerce-data-pipelines/delivery-tracker/beam_pipeline:/app
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+      bigtable-emulator:
+        condition: service_healthy
+      delivery-tracker-api:
+        condition: service_started
+
+  notification-service:
+    build:
+      context: ./commerce-data-pipelines/delivery-tracker/notification_service
+      dockerfile: Dockerfile
+    container_name: delivery-notification-worker
+    restart: unless-stopped
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - GCP_PROJECT_ID=test-project
+      - NOTIFICATION_TOPIC=delivery_notification
+      - NOTIFICATION_SUBSCRIPTION=delivery_notification_sub
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+    volumes:
+      - ./commerce-data-pipelines/delivery-tracker/notification_service:/app
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+
+  # =========================================================================
+  # 3. INVENTORY STREAMING PIPELINE (APACHE BEAM / DATAFLOW & SIMULATOR)
+  # =========================================================================
+  inventory-beam-pipeline:
+    build:
+      context: ./commerce-data-pipelines/inventory-pipeline/beam_pipeline
+      dockerfile: Dockerfile
+    container_name: inventory-beam-pipeline
+    restart: unless-stopped
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - GCP_PROJECT_ID=test-project
+      - INVENTORY_TOPIC=inventory-updates
+      - INVENTORY_SUBSCRIPTION=inventory-beam-sub
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+    volumes:
+      - ./commerce-data-pipelines/inventory-pipeline/beam_pipeline:/app
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  inventory-publisher:
+    profiles: ["manual"]
+    build:
+      context: ./commerce-data-pipelines/inventory-pipeline/publisher
+      dockerfile: Dockerfile
+    container_name: inventory-simulator-publisher
+    restart: unless-stopped
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - PUBSUB_PROJECT_ID=test-project
+      - INVENTORY_TOPIC_ID=inventory-updates
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+    volumes:
+      - ./commerce-data-pipelines/inventory-pipeline/publisher:/app
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+      inventory-beam-pipeline:
+        condition: service_started
+
+  # =========================================================================
+  # 4. UNIFIED COMMERCE API GATEWAY
+  # =========================================================================
+  commerce-api:
+    build:
+      context: ./commerce-api
+      dockerfile: Dockerfile
+    container_name: commerce-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-your-gcp-project-id}
+      - BIGQUERY_DATASET=${BIGQUERY_DATASET:-commerce_analytics}
+      - BRONZE_BUCKET=${BRONZE_BUCKET:-commerce-lakehouse-bronze}
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    volumes:
+      - ./commerce-api:/app
+      - ./commerce-ml:/commerce-ml
+      - ~/.config/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 5. AIRFLOW STANDALONE (LAKEHOUSE PIPELINE ORCHESTRATION)
+  # =========================================================================
+  airflow-standalone:
+    build:
+      context: ./commerce-data-pipelines/lakehouse/airflow
+      dockerfile: Dockerfile
+    container_name: airflow-standalone
+    restart: unless-stopped
+    command: standalone
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__PARALLELISM=4
+      - AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG=2
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__SCHEDULER__TASK_QUEUED_TIMEOUT=600
+      - AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC=5
+      - AIRFLOW__SCHEDULER__SCHEDULER_HEALTH_CHECK_THRESHOLD=60
+      - AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=30
+      - AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT=120
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW_DATABASE_SQL_ALCHEMY_CONN}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.session,airflow.api.auth.backend.basic_auth
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - AIRFLOW_VAR_POSTGRES_HOST=${POSTGRES_HOST}
+      - AIRFLOW_VAR_POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - AIRFLOW_VAR_POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-neondb}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-require}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-your-gcp-project-id}
+      - BIGQUERY_DATASET=${BIGQUERY_DATASET:-commerce_analytics}
+      - BRONZE_BUCKET=${BRONZE_BUCKET:-commerce-lakehouse-bronze}
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/.gcp/credentials.json
+    volumes:
+      - ./commerce-data-pipelines/lakehouse/airflow/dags:/opt/airflow/dags
+      - ./commerce-data-pipelines/lakehouse/airflow/plugins:/opt/airflow/plugins
+      - ./commerce-data-pipelines/lakehouse:/opt/airflow/lakehouse
+      - ~/.config/gcloud/application_default_credentials.json:/opt/airflow/.gcp/credentials.json:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "python3 -c \"import urllib.request, json; data = json.loads(urllib.request.urlopen('http://localhost:8080/health').read().decode()); exit(0 if data.get('scheduler', {}).get('status') == 'healthy' else 1)\"" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+  # =========================================================================
+  # 6. CENTRALIZED COMMERCE PORTAL UX (COMMERCE-APP)
+  # =========================================================================
+  commerce-app:
+    build:
+      context: ./commerce-app
+      dockerfile: Dockerfile
+    container_name: commerce-app-portal
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - COMMERCE_API_URL=http://commerce-api:8002/api
+      - AIRFLOW_URL=http://airflow-standalone:8080
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-your-gcp-project-id}
+      - BRONZE_BUCKET=${BRONZE_BUCKET:-commerce-lakehouse-bronze}
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+    volumes:
+      - ./commerce-app:/app
+      - ~/.config/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json:ro
+    depends_on:
+      commerce-api:
+        condition: service_started
+      airflow-standalone:
+        condition: service_started
+

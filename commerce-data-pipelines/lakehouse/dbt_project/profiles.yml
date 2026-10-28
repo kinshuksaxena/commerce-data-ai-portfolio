@@ -1,0 +1,12 @@
+lakehouse_clickhouse:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      driver: native
+      host: "{{ env_var('CLICKHOUSE_HOST', 'localhost') }}"
+      port: 9000
+      user: default
+      password: ""
+      schema: lakehouse
+      secure: False

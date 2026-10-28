@@ -1,0 +1,11 @@
+product_id,product_name,category,unit_price,supplier
+PROD-001,Ergonomic Mechanical Keyboard,Electronics,129.99,KeyTech Labs
+PROD-002,Ultra-Wide Gaming Monitor 34",Electronics,499.50,VisionCorp
+PROD-003,Wireless Noise Cancelling Headphones,Audio,249.00,SoundWave
+PROD-004,Smart Fitness Smartwatch v2,Wearables,199.99,PulseTech
+PROD-005,Aerodynamic Carbon Fiber Road Bike,Sports,1250.00,VeloMotion
+PROD-006,Precision Ergonomic Wireless Mouse,Electronics,79.99,KeyTech Labs
+PROD-007,Studio USB Condenser Microphone,Audio,149.50,SoundWave
+PROD-008,4K Ultra-HD Streaming Webcam,Electronics,119.00,VisionCorp
+PROD-009,Standing Desk Converter Motorized,Office,349.00,WorkErgo Systems
+PROD-010,Stainless Steel Insulated Smart Bottle,Fitness,45.00,PulseTech

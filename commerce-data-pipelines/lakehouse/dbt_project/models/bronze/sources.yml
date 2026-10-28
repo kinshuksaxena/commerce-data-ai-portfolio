@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: default
+    schema: lakehouse
+    tables:
+      - name: bronze_orders
+      - name: bronze_products
+      - name: bronze_customers
